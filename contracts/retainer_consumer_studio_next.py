@@ -56,7 +56,7 @@ class RetainerConsumer(gl.contract.Contract):
     # decision QuoteKeeper's own validator committee already reached.
     @gl.public.write
     def settle(self) -> None:
-        qk = gl.get_contract_at(self.quotekeeper_address)
+        qk = gl.contract.get_at(self.quotekeeper_address)
         compliant = qk.view().is_compliant(self.agreement_id, self.min_compliance_bps)
         available = self.balance - self.owed_to_mm - self.owed_to_treasury
         assert available > 0, "nothing to settle"
@@ -71,7 +71,7 @@ class RetainerConsumer(gl.contract.Contract):
         amount = self.owed_to_mm
         assert amount > 0, "nothing owed"
         self.owed_to_mm = u256(0)
-        gl.get_contract_at(self.mm_payout_address).emit_transfer(value=amount)
+        gl.contract.get_at(self.mm_payout_address).emit_transfer(value=amount)
 
     @gl.public.write
     def withdraw_treasury(self) -> None:
@@ -79,7 +79,7 @@ class RetainerConsumer(gl.contract.Contract):
         amount = self.owed_to_treasury
         assert amount > 0, "nothing owed"
         self.owed_to_treasury = u256(0)
-        gl.get_contract_at(self.treasury_address).emit_transfer(value=amount)
+        gl.contract.get_at(self.treasury_address).emit_transfer(value=amount)
 
     @gl.public.view
     def get_state(self) -> dict:

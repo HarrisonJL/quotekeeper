@@ -51,9 +51,20 @@ This contract exists in two source files: [`contracts/quotekeeper.py`](contracts
 (Bradbury, GenVM v0.2.11, test-covered by the suite below) and a Studio Next variant (a
 newer GenVM generation - the primary live deployment, ported using the same mechanical
 process documented in the sibling [SolvencyOracle](https://github.com/HarrisonJL/solvency-oracle)
-project's `studio-next/README.md`). `gl.eq_principle.strict_eq`, `gl.vm.run_nondet`,
-`gl.get_contract_at(...).view()`/`.emit_transfer()` were all confirmed directly against
-the version-matched SDK source before writing this contract, not assumed.
+project's `studio-next/README.md`). `gl.eq_principle.strict_eq` and `gl.vm.run_nondet`
+were confirmed directly against the version-matched SDK source before writing this
+contract, not assumed.
+
+Porting `retainer_consumer.py` specifically surfaced one more real API move beyond what
+SolvencyOracle's port needed: `gl.get_contract_at(address)` doesn't exist on Studio Next's
+live package - it moved to `gl.contract.get_at(address)`. Found the same way as
+SolvencyOracle's `gl.message.datetime` fix: a temporary `debug_gl()` probe deployed to
+introspect `dir(gl.contract)` live, not guessed. That same probe also surfaced
+`gl.vm.run_nondet_default` existing alongside `gl.vm.run_nondet` in the live package -
+worth knowing about (a previous project session flagged a version where these two names
+had swapped meaning), but not something this contract needed to change: `run_nondet`'s
+actual behavior, confirmed by every consensus test passing exactly as expected on both
+networks, is still the "safe" custom-validator primitive this contract relies on.
 
 Direct Mode cannot simulate cross-contract calls without a "glsim" hook this project
 doesn't configure - confirmed in `gltest`'s own source (`CallContract` falls through to
