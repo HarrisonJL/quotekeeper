@@ -117,15 +117,27 @@ def _threshold_verdict(value: int, threshold: int, noise_bps: int, lower_is_pass
     return "PASS" if value >= threshold else "FAIL"
 
 
+# FAIL is checked before INCONCLUSIVE - a self-audit caught that the
+# original ordering did the opposite, so a decisive breach on one metric
+# (e.g. spread wildly over its cap) got masked into INCONCLUSIVE whenever
+# the OTHER metric happened to sit inside its own noise band. INCONCLUSIVE
+# samples are excluded from compliance_bps's denominator, and a new
+# agreement with zero decisive samples reports 100% compliant by default
+# - so under the old ordering, an MM breaching one KPI on every single
+# sample could read as perfectly compliant forever, just by keeping the
+# other KPI reading near its threshold. A confirmed breach on either
+# metric must win regardless of the other metric's ambiguity: that is the
+# same "err toward catching a real problem" direction already used
+# everywhere else in this account's attestors (see README).
 def _local_verdict(spread_bps, depth_usd, max_spread_bps: int, min_depth_usd: int, noise_bps: int) -> str:
     if spread_bps is None or depth_usd is None:
         return "INCONCLUSIVE"
     spread_verdict = _threshold_verdict(spread_bps, max_spread_bps, noise_bps, lower_is_pass=True)
     depth_verdict = _threshold_verdict(depth_usd, min_depth_usd, noise_bps, lower_is_pass=False)
-    if spread_verdict == "INCONCLUSIVE" or depth_verdict == "INCONCLUSIVE":
-        return "INCONCLUSIVE"
     if spread_verdict == "FAIL" or depth_verdict == "FAIL":
         return "FAIL"
+    if spread_verdict == "INCONCLUSIVE" or depth_verdict == "INCONCLUSIVE":
+        return "INCONCLUSIVE"
     return "PASS"
 
 

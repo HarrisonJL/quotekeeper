@@ -164,6 +164,42 @@ def test_sample_fail_when_depth_too_shallow(direct_vm, direct_deploy, direct_own
     assert qk.get_sample(0)["verdict"] == "FAIL"
 
 
+# A self-audit before submission found this: _local_verdict checked
+# INCONCLUSIVE before FAIL, so a decisive breach on one metric got masked
+# into INCONCLUSIVE whenever the other metric happened to land inside its
+# own noise band. INCONCLUSIVE samples don't count toward compliance_bps's
+# denominator, so an MM blowing through its spread cap on every sample
+# could still read as 100% compliant forever, simply by keeping depth
+# hovering near its own threshold. A confirmed breach on either metric
+# must win regardless of the other metric's ambiguity.
+def test_sample_fail_when_spread_decisively_fails_even_if_depth_is_borderline(direct_vm, direct_deploy, direct_owner):
+    qk = _deploy(direct_vm, direct_deploy, direct_owner)
+    _register(qk, direct_vm, max_spread_bps=200, min_depth_usd=50000, noise_bps=500)
+    _mock_page(direct_vm, URL, "page")
+    # spread 1000 is a decisive FAIL (threshold 200, band 10).
+    # depth 48000 is inside the noise band around 50000 (band 2500) -> INCONCLUSIVE on its own.
+    _mock_metrics_llm(direct_vm, spread_bps=1000, depth_usd=48000)
+    qk.sample("MM1")
+
+    assert qk.get_sample(0)["verdict"] == "FAIL"
+    a = qk.get_agreement("MM1")
+    assert a["fail_count"] == 1 and a["inconclusive_count"] == 0
+
+
+def test_sample_fail_when_depth_decisively_fails_even_if_spread_is_borderline(direct_vm, direct_deploy, direct_owner):
+    qk = _deploy(direct_vm, direct_deploy, direct_owner)
+    _register(qk, direct_vm, max_spread_bps=200, min_depth_usd=50000, noise_bps=500)
+    _mock_page(direct_vm, URL, "page")
+    # spread 195 is inside the noise band around 200 (band 10) -> INCONCLUSIVE on its own.
+    # depth 1000 is a decisive FAIL (threshold 50000, band 2500).
+    _mock_metrics_llm(direct_vm, spread_bps=195, depth_usd=1000)
+    qk.sample("MM1")
+
+    assert qk.get_sample(0)["verdict"] == "FAIL"
+    a = qk.get_agreement("MM1")
+    assert a["fail_count"] == 1 and a["inconclusive_count"] == 0
+
+
 def test_sample_inconclusive_when_extraction_yields_null(direct_vm, direct_deploy, direct_owner):
     qk = _deploy(direct_vm, direct_deploy, direct_owner)
     _register(qk, direct_vm)

@@ -39,7 +39,9 @@ Every validator (leader included) fetches every venue URL live via `gl.nondet.we
 
 **Clause parsing uses `strict_eq`, sampling uses a custom validator - deliberately different equivalence principles for different kinds of nondeterminism.** Parsing free text into a fixed two-field schema either has one clearly correct extraction or the clause is genuinely ambiguous; there's no legitimate reason for two honest validators to extract different canonical JSON from the same static text, so exact equality is the right bar and an ambiguous clause should fail registration outright. Live market sampling is the opposite: honest validators fetching seconds apart are *expected* to see different numbers, so the right question moves from "do the numbers match" to "does the decision match" - see above.
 
-**All-or-nothing across both metrics per sample**, same reasoning as Ballpark's metric vector and SolvencyOracle's reserves/liabilities pair: if either the spread or the depth verdict disagrees, the whole sample fails to reach consensus rather than storing a partial result.
+**All-or-nothing across both metrics per sample**, same reasoning as Ballpark's metric vector and SolvencyOracle's reserves/liabilities pair: both metrics are combined into one decision *before* consensus, so a leader/validator disagreement on either metric fails the whole sample rather than reaching partial agreement metric-by-metric.
+
+**A confirmed FAIL on either metric wins over an INCONCLUSIVE on the other.** `_local_verdict` checks `FAIL` before `INCONCLUSIVE`. A pre-submission self-audit caught that the original code checked them in the opposite order, so a decisive breach on one metric got silently masked into `INCONCLUSIVE` whenever the *other* metric happened to sit inside its own noise band. Since `compliance_bps` excludes `INCONCLUSIVE` from its denominator and a new agreement reports 100% compliant by default with zero decisive samples, that ordering meant an MM breaching one KPI on *every* sample could still read as perfectly compliant, just by keeping the other KPI near its threshold - see CONTRACT.md for the full writeup and the regression tests that catch this. The corrected priority (`FAIL` > `INCONCLUSIVE` > `PASS`) matches this account's consistent direction to err toward catching a real problem rather than toward an ambiguous free pass.
 
 **Prompt injection.** Both prompts explicitly fence fetched content as untrusted data, the same defensive pattern used throughout this account's other GenLayer projects.
 
@@ -73,18 +75,20 @@ which makes exactly one such call, is therefore verified live only - see CONTRAC
 
 ## Testing
 
-`tests/test_quotekeeper.py` (21 tests) and `tests/test_retainer_consumer.py` (6 tests),
+`tests/test_quotekeeper.py` (23 tests) and `tests/test_retainer_consumer.py` (6 tests),
 `genlayer-test` Direct Mode:
 
 1. **Registration** - clause-parsing success and rejection paths (ambiguous clause missing either KPI), input validation, immutability.
 2. **Integration** (real `sample()` calls, both the web fetch and the LLM extraction mocked) - `PASS`/`FAIL`/`INCONCLUSIVE` for each metric independently, `compliance_bps` correctly excluding `INCONCLUSIVE` from its denominator, multi-venue source-hash recording.
 3. **Consensus-boundary tests** via `direct_vm.run_validator(leader_result=...)` - the actual point of this contract: agreement despite different exact numbers when both are decisively on the same side, rejection of a leader's clean verdict when a validator's own reading is borderline, exact-edge-of-the-noise-band agreement, and the all-or-nothing-across-metrics case.
-4. `test_retainer_consumer.py` covers everything `settle()` doesn't touch (constructor validation, `fund_retainer` balance bookkeeping, `withdraw_*` access control) and documents, with a passing test, exactly why `settle()` itself can't run in Direct Mode.
+4. **Self-audit regression** - a decisive `FAIL` on one metric correctly wins over an `INCONCLUSIVE` on the other, in both metric directions. Confirmed to genuinely fail against the pre-fix ordering before being confirmed to pass against the fix - see "Design notes."
+5. `test_retainer_consumer.py` covers everything `settle()` doesn't touch (constructor validation, `fund_retainer` balance bookkeeping, `withdraw_*` access control) and documents, with a passing test, exactly why `settle()` itself can't run in Direct Mode.
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
 pip install genlayer-py==0.16.3 genlayer-test==0.29.2 pytest==9.1.1 genvm-linter==0.11.0
-genvm-lint check contracts/quotekeeper.py contracts/retainer_consumer.py
+genvm-lint check contracts/quotekeeper.py
+genvm-lint check contracts/retainer_consumer.py
 python -m pytest tests/ -v
 ```
 
