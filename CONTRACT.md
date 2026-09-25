@@ -64,5 +64,7 @@ Kept live as evidence the underlying mechanics work on more than one network, ma
 - `sample("DEMO1")` - tx `0x7370ba658c38ba97c0b1ef5c36ca8b4835114a14bd2895d99a84ac467d8fbd68`: `{"spread_bps": 50, "depth_usd": 180000, "verdict": "PASS"}`
 - `sample("DEMO2")` - tx `0xe10a34d0c23dc09774b9ebf9ec693b8463a4ea0bfe449b403557576521ffb318`: `{"spread_bps": 500, "depth_usd": 3500, "verdict": "FAIL"}`
 - `RetainerConsumer` deployed at `0xC7637Fb54565267178B63364f66CA02131Fc4A0a` (tx `0x6ef3e436ec0486e628062057ff70002214802504e2fb6b14615d037227c5e068`, after a first attempt reverted at the raw consensus-contract layer)
+- `fund_retainer()` (1000 GEN) - tx `0xe0a90e691506d8f639430bdfb875ff329a259a078e4fb4b122f9f14eda10968f`
+- `settle()` - tx `0xb079847fdb65c3430bfa843df3f0eabab7da3a8eea7013e1b234c50205f0c985`: `{"agreement_id": "DEMO1", "balance": 1000, "owed_to_mm": 1000, "owed_to_treasury": 0}` - the same correct result as Studio Next, via Bradbury's original v0.2.11 `gl.get_contract_at` API, which worked on the first try - the API move described above is specific to Studio Next's newer package.
 
-Bradbury's original v0.2.11 `gl.get_contract_at` API worked correctly on the first try - the API move described above is specific to Studio Next's newer package.
+`get_state()` after both networks' full flow matches exactly: two agreements, two samples (one PASS, one FAIL), one settled retainer correctly routed to the compliant MM - the whole mechanism proven end to end, on both networks, independently.
