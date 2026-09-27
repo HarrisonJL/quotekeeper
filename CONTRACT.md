@@ -1,12 +1,38 @@
 # Deployment
 
-- **Address:** [`0xF48a62c51214ee7330D60569711FCa47C2C71f3E`](https://explorer-studio-dev.genlayer.com/address/0xF48a62c51214ee7330D60569711FCa47C2C71f3E)
+- **Address:** [`0x1A0A3594CDB6b650D1e417269BC64152B87B503d`](https://explorer-studio-dev.genlayer.com/address/0x1A0A3594CDB6b650D1e417269BC64152B87B503d)
 - **Network:** GenLayer Studio Next (chain id `61997`)
-- **Deploy tx:** `0x87909901bb0d1d77108d54b57383da3182be16c65f0bf535b73b70cc59e86a8f`
+- **Deploy tx:** `0x6fd2031c92421b794b05b115654ccd1745ef02f22b61b121046f146ca0d1908d`
 - **Deployer:** `0x5cdb5699bc1038e115A973bb91A646f7E98C075b`
 - **Contract source:** [`contracts/quotekeeper_studio_next.py`](contracts/quotekeeper_studio_next.py) - functionally identical to [`contracts/quotekeeper.py`](contracts/quotekeeper.py); only GenVM import/decorator conventions differ. See "Porting to Studio Next" below.
 
-*(This is a redeployment. A pre-submission self-audit found and fixed a real correctness bug after the first deployment went live - see "Self-audit: a FAIL that could be masked as INCONCLUSIVE" below. The address above is the corrected contract; the original deployment's address is retired.)*
+*(This is the second redeployment. A pre-submission self-audit found and fixed a real correctness bug (see "Self-audit" below); a subsequent GenLayer steward review then found a second, independent gap - see "Steward review: is_compliant() could report zero evidence as full compliance" immediately below. The address above is the fully corrected contract; both earlier deployments are retired.)*
+
+## Steward review: is_compliant() could report zero evidence as full compliance
+
+A GenLayer steward reviewed this contract after submission and found a real gap distinct from
+the self-audit below: `compliance_bps()` deliberately returns `10000` (100%) when an agreement
+has zero decisive samples, so a brand-new agreement isn't misreported as 0% before anyone has
+sampled it. But `is_compliant()` simply compared that same optimistic default against the
+caller's threshold - so an agreement that had **never been sampled at all**, or had been sampled
+only into `INCONCLUSIVE` results, reported as fully compliant for *any* `min_compliance_bps`,
+including the lowest possible bar. Because `RetainerConsumer.settle()` gates purely on
+`is_compliant()`, the practical consequence was real and live-provable: a retainer could be paid
+out to a market maker with **zero decisive evidence ever gathered** about whether they actually
+met their KPIs.
+
+**Fix:** `is_compliant()` now returns `False` outright whenever `pass_count + fail_count == 0`,
+regardless of `min_compliance_bps` - an agreement with no decisive evidence is unevaluated, not
+compliant. `compliance_bps()` itself is unchanged (still informational display data, not a
+fund-gating value); the real gate is in `is_compliant()`, so no downstream caller needed to
+change.
+
+Proven by a new regression test (`test_is_compliant_fails_closed_with_zero_decisive_samples`,
+covering both the never-sampled and the all-`INCONCLUSIVE` paths), confirmed the rigorous way:
+run against the old code first and confirmed to genuinely **fail** (`assert True is False` - the
+old code really did report compliant), then confirmed passing after the fix, alongside the full
+suite (30 tests). Live proof that the fix closes the exploit through the actual cross-contract
+path `RetainerConsumer.settle()` uses (not just the unit-testable view) is below.
 
 ## Self-audit: a FAIL that could be masked as INCONCLUSIVE
 
@@ -47,10 +73,10 @@ self-audit, not just re-running the demo, was needed to catch it.
 Two demo agreements registered against real, public pages
 ([compliant](demo/example_compliant_market.md), [breach](demo/example_breach_market.md)):
 
-- `register_agreement("DEMO1", ...)` - tx `0x79b14bc501485b5efa8ae470ff33b4a83effb26ef697c4e28a8ea5fb81d2c4fb`
-- `register_agreement("DEMO2", ...)` - tx `0x6a7d9ee3a7aaf56633483b90b507a5a7488ac33a08d170e7ab1ad8dc2722d3e9`
+- `register_agreement("DEMO1", ...)` - tx `0xd06aec2e30664b3d10a15dde3dbada74852fabfc7e0b9829933801d052e8dbc1`
+- `register_agreement("DEMO2", ...)` - tx `0x7f67683f44455dec820edf137b514e8f1414e291dca297ca38c6cd7142d263f4`
 
-`sample("DEMO1")` - tx `0x19787ad473e7a0b3c4facaade80ef15028523632c0ba60b1e51786cae5b1a641`:
+`sample("DEMO1")` - tx `0x19c5cd7dac0b6af2efe0326da90dbf364468ace2f1f3eeeea3c70804c4cb4476`:
 
 ```json
 {"agreement_id": "DEMO1", "spread_bps": 50, "depth_usd": 180000, "verdict": "PASS"}
@@ -58,7 +84,7 @@ Two demo agreements registered against real, public pages
 
 Extracted live: 0.5% spread, $180,000 depth - exactly what the source page states, against a 2%/$50,000 KPI - **PASS**, correctly.
 
-`sample("DEMO2")` - tx `0x372891a1c1d94f7e78f844f406a87b2677fbe82953f671ef648643d1ca98269f`:
+`sample("DEMO2")` - tx `0xdd7ebceddcf11edfe9227e7a9f146ffab52ab2451fc13d183c929a55f15dfa31`:
 
 ```json
 {"agreement_id": "DEMO2", "spread_bps": 500, "depth_usd": 3500, "verdict": "FAIL"}
@@ -70,9 +96,9 @@ Extracted live: 0.5% spread, $180,000 depth - exactly what the source page state
 
 [`contracts/retainer_consumer_studio_next.py`](contracts/retainer_consumer_studio_next.py) demonstrates a downstream contract gating on `is_compliant()` via a real cross-contract call - not mocked, since Direct Mode can't simulate this (see README).
 
-- Deploy - tx `0xd2dfc11b9ff368c948c1214a5db43e4cf498ad70bc6d87fa71c1ce0871762322` (address `0xdb15BFc6AabeE68d98ec02E187EFdCC8fBddA8C2`)
-- `fund_retainer()` (1000 GEN) - tx `0x50c8495c69b7f36bd5f5845707c9a2139d1d1aa331856070e9b308f0a9c848e9`
-- `settle()` - tx `0xd904ddef4405ad35c027d30dc396f8ce65aa6cc8cdea9cd7b514dedcad1d82d5`, reading DEMO1's real `is_compliant(9000)` result via a genuine cross-contract call
+- Deploy - tx `0x371881f3c8147f8564339e9f44914198a3672f975016c8c5f210f71aa3be4dc6` (address `0x46bc8b6670146F902441248F74dc95c106285E3d`)
+- `fund_retainer()` (1000 GEN) - tx `0x792d983c72d906d8343689ad74646d3df0c7aab9c0676da607e2c419a09e124f`
+- `settle()` - tx `0x3934913a3601cba3c9113d34168b747d29ae32ad4e1a96f7f6f00ed475ca77e9`, reading DEMO1's real `is_compliant(9000)` result via a genuine cross-contract call
 
 ```json
 {"agreement_id": "DEMO1", "balance": 1000, "owed_to_mm": 1000, "owed_to_treasury": 0}
@@ -81,6 +107,30 @@ Extracted live: 0.5% spread, $180,000 depth - exactly what the source page state
 The full 1000 GEN routed to the MM's payout balance because DEMO1 is compliant - a real decision, made by reading another contract's real consensus-derived state, not a mocked or hardcoded result.
 
 *(The `gl.get_contract_at` -> `gl.contract.get_at` API move needed for this cross-contract call on Studio Next was already found and fixed before this redeployment - see "Porting to Studio Next" below; it did not need rediscovering.)*
+
+## Live proof: the steward-flagged exploit, closed end to end
+
+A third agreement, `ZEROSAMPLE1`, registered and **never sampled at all** - zero decisive
+evidence by construction:
+
+- `register_agreement("ZEROSAMPLE1", ...)` - tx `0xdf7f64751bd60746ad1f1ea71414e16efc6fac33eff92dd33c5a966ee89e812a`
+- `compliance_bps("ZEROSAMPLE1")` reads `10000` (100%) - the deliberate optimistic display default for zero decisive samples, unchanged by the fix.
+- `is_compliant("ZEROSAMPLE1", 0)` reads **`false`** - even `min_compliance_bps = 0`, the lowest possible bar, is not satisfiable with zero decisive evidence.
+
+A `RetainerConsumer` deployed against `ZEROSAMPLE1` with `min_compliance_bps = 0` - the most
+permissive possible configuration, maximally favorable to the old bug:
+
+- Deploy - tx `0x3e0abfe1f4bb6fee16c509619938dcc32c0b4b2a17059da24841932676e4d5d8` (address `0x873a571f866575DD92dA7A3E89CB0ae2FC65830C`)
+- `fund_retainer()` (1000 GEN) - tx `0x3409c2111bf867b87475f8fd0d9e07a91dc18b99324c343ce62e92da74f82223`
+- `settle()` - tx `0x61c5c96eda8d804cae5b9f5ab8b219fe0d6acdfd2779a69166d69324b7c10d3f`
+
+```json
+{"agreement_id": "ZEROSAMPLE1", "balance": 1000, "min_compliance_bps": 0, "owed_to_mm": 0, "owed_to_treasury": 1000}
+```
+
+The full 1000 GEN routed to the **treasury**, not the market maker, despite `min_compliance_bps`
+being set to the lowest possible value - live, on-chain confirmation that the exploit the steward
+flagged is closed through the real cross-contract path, not just in the unit-testable view.
 
 ## Porting to Studio Next
 

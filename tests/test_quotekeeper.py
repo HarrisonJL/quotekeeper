@@ -76,7 +76,8 @@ def test_register_agreement_succeeds_and_is_readable(direct_vm, direct_deploy, d
 
     assert qk.get_state()["agreement_count"] == 1
     assert qk.list_agreements() == [{"agreement_id": "MM1", "mm_label": "Example MM"}]
-    assert qk.compliance_bps("MM1") == 10000  # no decisive sample yet -> reported compliant
+    assert qk.compliance_bps("MM1") == 10000  # no decisive sample yet -> displayed as 100%
+    assert qk.is_compliant("MM1", 0) is False  # but not actually reported compliant - see the dedicated test below
 
 
 def test_register_agreement_rejects_duplicate_id(direct_vm, direct_deploy, direct_owner):
@@ -211,6 +212,7 @@ def test_sample_inconclusive_when_extraction_yields_null(direct_vm, direct_deplo
     a = qk.get_agreement("MM1")
     assert a["inconclusive_count"] == 1
     assert qk.compliance_bps("MM1") == 10000  # excluded from denominator, no decisive sample yet
+    assert qk.is_compliant("MM1", 0) is False  # zero decisive samples - see the dedicated test below
 
 
 def test_compliance_bps_excludes_inconclusive_from_denominator(direct_vm, direct_deploy, direct_owner):
@@ -234,6 +236,30 @@ def test_compliance_bps_excludes_inconclusive_from_denominator(direct_vm, direct
     assert qk.compliance_bps("MM1") == 5000  # 1 pass / (1 pass + 1 fail) = 50%
     assert qk.is_compliant("MM1", 9000) is False
     assert qk.is_compliant("MM1", 4000) is True
+
+
+# A steward review found this exact gap: with zero decisive samples,
+# compliance_bps() returns 10000 (100%) so a brand-new agreement isn't
+# misreported as 0% before anyone has sampled it - but is_compliant() then
+# reported ANY agreement compliant with zero decisive evidence ever
+# gathered, and RetainerConsumer.settle() (which gates purely on
+# is_compliant()) would pay the market maker on that basis. Covers both
+# zero-decisive paths: never sampled at all, and sampled but only ever
+# INCONCLUSIVE. Even the lowest possible bar (min_compliance_bps=0) must
+# not be satisfiable with no decisive evidence.
+def test_is_compliant_fails_closed_with_zero_decisive_samples(direct_vm, direct_deploy, direct_owner):
+    qk = _deploy(direct_vm, direct_deploy, direct_owner)
+    _register(qk, direct_vm)
+
+    assert qk.compliance_bps("MM1") == 10000
+    assert qk.is_compliant("MM1", 0) is False  # never sampled at all
+
+    _mock_page(direct_vm, URL, "page with no clear market data")
+    _mock_metrics_llm(direct_vm, spread_bps=None, depth_usd=None)
+    qk.sample("MM1")  # INCONCLUSIVE - still zero decisive samples
+
+    assert qk.compliance_bps("MM1") == 10000
+    assert qk.is_compliant("MM1", 0) is False
 
 
 def test_sample_records_a_source_hash_per_venue(direct_vm, direct_deploy, direct_owner):

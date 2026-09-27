@@ -43,6 +43,8 @@ Every validator (leader included) fetches every venue URL live via `gl.nondet.we
 
 **A confirmed FAIL on either metric wins over an INCONCLUSIVE on the other.** `_local_verdict` checks `FAIL` before `INCONCLUSIVE`. A pre-submission self-audit caught that the original code checked them in the opposite order, so a decisive breach on one metric got silently masked into `INCONCLUSIVE` whenever the *other* metric happened to sit inside its own noise band. Since `compliance_bps` excludes `INCONCLUSIVE` from its denominator and a new agreement reports 100% compliant by default with zero decisive samples, that ordering meant an MM breaching one KPI on *every* sample could still read as perfectly compliant, just by keeping the other KPI near its threshold - see CONTRACT.md for the full writeup and the regression tests that catch this. The corrected priority (`FAIL` > `INCONCLUSIVE` > `PASS`) matches this account's consistent direction to err toward catching a real problem rather than toward an ambiguous free pass.
 
+**`is_compliant()` fails closed with zero decisive samples - a GenLayer steward review found this one.** `compliance_bps()` deliberately returns `10000` (100%) when `pass_count + fail_count == 0`, so a brand-new, never-sampled agreement isn't misreported as 0% before anyone has actually sampled it. `is_compliant()` originally just compared that optimistic default against the caller's threshold - so an agreement with zero decisive evidence (never sampled at all, or sampled only into `INCONCLUSIVE`) reported as fully compliant for *any* `min_compliance_bps`, including the lowest possible bar. Since `RetainerConsumer.settle()` gates purely on `is_compliant()`, this meant a retainer could pay out to a market maker with no decisive evidence ever gathered about whether they met their KPIs. Fixed: `is_compliant()` now returns `False` outright with zero decisive samples, regardless of threshold - unevaluated is not compliant. `compliance_bps()` itself is unchanged (still display data, not a fund-gating value) - see CONTRACT.md for the live proof that this closes the exploit through the real `RetainerConsumer.settle()` cross-contract path, not just the unit-testable view.
+
 **Prompt injection.** Both prompts explicitly fence fetched content as untrusted data, the same defensive pattern used throughout this account's other GenLayer projects.
 
 **Cumulative compliance, not time-windowed.** `compliance_bps` aggregates every sample ever taken for an agreement, not a rolling 30-day window. Explicit time-windowed reporting is a natural v2 extension once there's a real usage pattern to design the bucketing around; it wasn't worth the added state-management complexity for a first version where the actual contribution is the decision-margin equivalence check itself, not the aggregation scheme.
@@ -75,13 +77,14 @@ which makes exactly one such call, is therefore verified live only - see CONTRAC
 
 ## Testing
 
-`tests/test_quotekeeper.py` (23 tests) and `tests/test_retainer_consumer.py` (6 tests),
+`tests/test_quotekeeper.py` (24 tests) and `tests/test_retainer_consumer.py` (6 tests),
 `genlayer-test` Direct Mode:
 
 1. **Registration** - clause-parsing success and rejection paths (ambiguous clause missing either KPI), input validation, immutability.
 2. **Integration** (real `sample()` calls, both the web fetch and the LLM extraction mocked) - `PASS`/`FAIL`/`INCONCLUSIVE` for each metric independently, `compliance_bps` correctly excluding `INCONCLUSIVE` from its denominator, multi-venue source-hash recording.
 3. **Consensus-boundary tests** via `direct_vm.run_validator(leader_result=...)` - the actual point of this contract: agreement despite different exact numbers when both are decisively on the same side, rejection of a leader's clean verdict when a validator's own reading is borderline, exact-edge-of-the-noise-band agreement, and the all-or-nothing-across-metrics case.
 4. **Self-audit regression** - a decisive `FAIL` on one metric correctly wins over an `INCONCLUSIVE` on the other, in both metric directions. Confirmed to genuinely fail against the pre-fix ordering before being confirmed to pass against the fix - see "Design notes."
+5. **Steward-review regression** - `test_is_compliant_fails_closed_with_zero_decisive_samples`: an agreement with zero decisive samples (never sampled, and sampled-but-only-`INCONCLUSIVE`) correctly reports `is_compliant() == False` even at `min_compliance_bps = 0`. Confirmed to genuinely fail against the pre-fix code (which reported `True`) before being confirmed to pass against the fix.
 5. `test_retainer_consumer.py` covers everything `settle()` doesn't touch (constructor validation, `fund_retainer` balance bookkeeping, `withdraw_*` access control) and documents, with a passing test, exactly why `settle()` itself can't run in Direct Mode.
 
 ```bash
@@ -95,8 +98,11 @@ python -m pytest tests/ -v
 ## Deployment
 
 See [`CONTRACT.md`](CONTRACT.md) for live addresses, deploy transactions, and a real
-end-to-end run: an agreement registered, a compliant sample, a breaching sample, and
-`RetainerConsumer` settling a funded retainer against the live `is_compliant` result.
+end-to-end run: an agreement registered, a compliant sample, a breaching sample,
+`RetainerConsumer` settling a funded retainer against the live `is_compliant` result, and a
+never-sampled agreement proving the steward-flagged zero-evidence exploit is closed - even at
+`min_compliance_bps = 0`, `RetainerConsumer.settle()` correctly routes to the treasury, not the
+market maker.
 
 ## Known limitations
 

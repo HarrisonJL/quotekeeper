@@ -338,8 +338,23 @@ class QuoteKeeper(gl.Contract):
             return u32(10000)
         return u32(a.pass_count * 10000 // decisive)
 
+    # Fails closed with zero decisive samples, per a steward review: with
+    # no PASS/FAIL evidence yet, compliance_bps() returns 10000 (100%) so
+    # a brand-new agreement isn't misreported as 0% before anyone has
+    # actually sampled it - but that same default let is_compliant()
+    # report ANY agreement compliant, and RetainerConsumer.settle() pay
+    # the market maker, with zero decisive samples ever taken (or with
+    # samples that were all INCONCLUSIVE). An agreement with no decisive
+    # evidence is not "compliant" - it's unevaluated - so this returns
+    # False until at least one PASS or FAIL sample actually exists,
+    # regardless of min_compliance_bps. compliance_bps() itself is left
+    # unchanged (still informational display data, not a fund-gating
+    # value), since the real gate is here.
     @gl.public.view
     def is_compliant(self, agreement_id: str, min_compliance_bps: u32) -> bool:
+        a = self.agreements[agreement_id]
+        if a.pass_count + a.fail_count == 0:
+            return False
         return self.compliance_bps(agreement_id) >= min_compliance_bps
 
     @gl.public.view
