@@ -8,6 +8,36 @@
 
 *(This is the second redeployment. A pre-submission self-audit found and fixed a real correctness bug (see "Self-audit" below); a subsequent GenLayer steward review then found a second, independent gap - see "Steward review: is_compliant() could report zero evidence as full compliance" immediately below. The address above is the fully corrected contract; both earlier deployments are retired.)*
 
+## Verify the deployed source matches this repo
+
+**`0x1A0A3594CDB6b650D1e417269BC64152B87B503d` is the deployment to review.** Its on-chain code, fetched from the chain itself with `gen_getContractCode`, not from this repo, is byte-identical to [`contracts/quotekeeper_studio_next.py`](contracts/quotekeeper_studio_next.py), the source containing the fail-closed `is_compliant()` (zero decisive samples is never compliant) and the corrected `FAIL > INCONCLUSIVE > PASS` priority. The consumer ([`contracts/retainer_consumer_studio_next.py`](contracts/retainer_consumer_studio_next.py)) is identical on-chain too. Every earlier deployment ran older source and is listed below as superseded: **do not use them to evaluate the contract**.
+
+| Deployment | Network | SHA-256 of the code on-chain | Same as this repo's source? | `is_compliant()` fails closed on zero evidence? |
+|---|---|---|---|---|
+| [`0x1A0A3594CDB6b650D1e417269BC64152B87B503d`](https://explorer-studio-dev.genlayer.com/address/0x1A0A3594CDB6b650D1e417269BC64152B87B503d) QuoteKeeper | Studio Next | `9af41940db597d6a259ce013ac024cdad56e904e8e187431485ced660a87c350` | **Yes, byte-identical** | **Yes** |
+| [`0x46bc8b6670146F902441248F74dc95c106285E3d`](https://explorer-studio-dev.genlayer.com/address/0x46bc8b6670146F902441248F74dc95c106285E3d) RetainerConsumer (DEMO1) | Studio Next | `5e7347295bac0e55bc9367d3757a8d0ce60ab27fbdff1c040578148d335e90af` | **Yes, byte-identical** | n/a (consumer) |
+| [`0x873a571f866575DD92dA7A3E89CB0ae2FC65830C`](https://explorer-studio-dev.genlayer.com/address/0x873a571f866575DD92dA7A3E89CB0ae2FC65830C) RetainerConsumer (ZEROSAMPLE1) | Studio Next | `5e7347295bac0e55bc9367d3757a8d0ce60ab27fbdff1c040578148d335e90af` | **Yes, byte-identical** | n/a (consumer) |
+| `0xF48a62c51214ee7330D60569711FCa47C2C71f3E` | Studio Next | `969ede32d2c05d306188a0098327e1a2d3946438d4bcda64f5e05b382a938f36` | No: second deployment, before the zero-evidence fix | **No** |
+| `0xe118229AB26d0Be859aAd7e703f30dCc09f2090D` | Studio Next | `ee7d6696622f4ed06d33b075066342d1ce4f535dba5ddd53691ad46bd2007043` | No: first deployment, before both fixes | **No** |
+| `0x753632506c5CBbdf727F84C7DA6B48e16cf3D79F` | Bradbury | `b2ba9b46dd379214f964410917ac08835b4bbf58fd40acced2fd0fb16f1c7654` | No: pre-fix source | **No** |
+| `0xAFB03FeE47542A6fbe0741Fd8F7d65bADa37FF79` | Studio Next | `0e21bb0ca822c3bf483766eea8f94d26c0bf9ed6a6c5518d6bba37b6773a8067` | No: the first RetainerConsumer attempt, using the pre-port cross-contract call (see "Porting to Studio Next") | n/a (consumer) |
+
+Reproduce it:
+
+```bash
+cd studio-next && npm ci
+npx tsx verify_code.ts                       # QuoteKeeper at the reviewed address
+# 0x1A0A3594CDB6b650D1e417269BC64152B87B503d
+#   on-chain  sha256 9af41940db597d6a259ce013ac024cdad56e904e8e187431485ced660a87c350 (15218 chars)
+#   ../contracts/quotekeeper_studio_next.py sha256 9af41940db597d6a259ce013ac024cdad56e904e8e187431485ced660a87c350 (15218 chars)
+# IDENTICAL
+npx tsx verify_code.ts 0x46bc8b6670146F902441248F74dc95c106285E3d ../contracts/retainer_consumer_studio_next.py
+```
+
+`shasum -a 256 contracts/quotekeeper_studio_next.py` gives the same hash locally, and `npx tsx verify_code.ts <old address>` prints `DIFFERENT` for any Studio Next deployment above marked superseded. The old `is_compliant()` on all three superseded QuoteKeeper deployments is the single line `return self.compliance_bps(agreement_id) >= min_compliance_bps`, with no zero-evidence guard.
+
+**The studio source is a mechanical port of the tested source.** `python3 scripts/port_to_studio_next.py` regenerates `contracts/*_studio_next.py` from `contracts/*.py` (five import/decorator/base-class/message substitutions) and exits non-zero if either committed port differs. Both are `IDENTICAL`.
+
 ## Steward review: is_compliant() could report zero evidence as full compliance
 
 A GenLayer steward reviewed this contract after submission and found a real gap distinct from
@@ -136,7 +166,10 @@ flagged is closed through the real cross-contract path, not just in the unit-tes
 
 Same mechanical process as [SolvencyOracle](https://github.com/HarrisonJL/solvency-oracle)'s port (pinned runner hash, `import genlayer as gl`, `@gl.storage.allow` + `@dataclass`, `gl.contract.Contract`, `gl.message.datetime`), plus one contract-specific find: `gl.get_contract_at` -> `gl.contract.get_at`, described above. `gl.vm.run_nondet` and `gl.eq_principle.strict_eq` - the actual consensus primitives this contract depends on - were confirmed unchanged in behavior by every test and live call behaving exactly as designed on both networks.
 
-## Historical: Bradbury deployment
+## Historical: Bradbury deployment (superseded: runs the pre-fix source)
+
+**Do not use this deployment to evaluate the contract.** It was deployed before the self-audit and steward fixes: its `is_compliant()` has no zero-evidence guard, and its on-chain code (SHA-256 in the table under "Verify the deployed source") differs from this repo's source. It is kept only as a record of the original cross-network test.
+
 
 - **Address:** [`0x753632506c5CBbdf727F84C7DA6B48e16cf3D79F`](https://explorer-bradbury.genlayer.com/address/0x753632506c5CBbdf727F84C7DA6B48e16cf3D79F)
 - **Deploy tx:** `0xef93a0687a6c9c36f2130eb34b4560c6b52b4e159ad518649539827abdfcc5c9`

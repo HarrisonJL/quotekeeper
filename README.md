@@ -2,7 +2,7 @@
 
 A reusable market-maker KPI compliance attestor for [GenLayer](https://genlayer.com): register a market-making agreement with its KPI clause and public venue data pages, and any wallet can trigger a real validator committee to independently sample live market quality and reach consensus on whether the MM is meeting its obligations - `PASS` / `FAIL` / `INCONCLUSIVE`, not one dashboard's word.
 
-**Live on GenLayer Studio Next. Testnet only.** (Also live, separately, on Bradbury - see [`CONTRACT.md`](CONTRACT.md).)
+**Live on GenLayer Studio Next at [`0x1A0A3594CDB6b650D1e417269BC64152B87B503d`](https://explorer-studio-dev.genlayer.com/address/0x1A0A3594CDB6b650D1e417269BC64152B87B503d). Testnet only.** That is the deployment to review: its on-chain code is byte-identical to [`contracts/quotekeeper_studio_next.py`](contracts/quotekeeper_studio_next.py) (`cd studio-next && npm ci && npx tsx verify_code.ts`; hashes and the superseded deployments are in [`CONTRACT.md`](CONTRACT.md), "Verify the deployed source matches this repo"). An older Bradbury deployment and two older Studio Next ones run pre-fix source and are superseded; they are listed there with their code hashes.
 
 ## The problem this solves
 
@@ -57,7 +57,7 @@ This contract exists in two source files: [`contracts/quotekeeper.py`](contracts
 (Bradbury, GenVM v0.2.11, test-covered by the suite below) and a Studio Next variant (a
 newer GenVM generation - the primary live deployment, ported using the same mechanical
 process documented in the sibling [SolvencyOracle](https://github.com/HarrisonJL/solvency-oracle)
-project's `studio-next/README.md`). `gl.eq_principle.strict_eq` and `gl.vm.run_nondet`
+project's `studio-next/README.md`; `python3 scripts/port_to_studio_next.py` regenerates the port from the tested source and checks the committed one is identical). `gl.eq_principle.strict_eq` and `gl.vm.run_nondet`
 were confirmed directly against the version-matched SDK source before writing this
 contract, not assumed.
 
