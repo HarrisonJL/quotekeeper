@@ -10,7 +10,7 @@
 
 ## Verify the deployed source matches this repo
 
-**`0x1A0A3594CDB6b650D1e417269BC64152B87B503d` is the deployment to review.** Its on-chain code, fetched from the chain itself with `gen_getContractCode`, not from this repo, is byte-identical to [`contracts/quotekeeper_studio_next.py`](contracts/quotekeeper_studio_next.py), the source containing the fail-closed `is_compliant()` (zero decisive samples is never compliant) and the corrected `FAIL > INCONCLUSIVE > PASS` priority. The consumer ([`contracts/retainer_consumer_studio_next.py`](contracts/retainer_consumer_studio_next.py)) is identical on-chain too. Every earlier deployment ran older source and is listed below as superseded: **do not use them to evaluate the contract**.
+**`0x1A0A3594CDB6b650D1e417269BC64152B87B503d` is the deployment to review.** Its on-chain code, fetched from the chain itself with `gen_getContractCode`, not from this repo, is byte-identical to [`contracts/quotekeeper_studio_next.py`](contracts/quotekeeper_studio_next.py), the source containing the fail-closed `is_compliant()` (zero decisive samples is never compliant) and the corrected `FAIL > INCONCLUSIVE > PASS` priority. The consumer ([`contracts/retainer_consumer_studio_next.py`](contracts/retainer_consumer_studio_next.py)) is identical on-chain too. The Bradbury deployment `0xECD44d71E3c7e7c366A4d971b4AbFc3C6E1d8428` runs the same fixed logic (the tested v0.2.11 source) and is identical to it on-chain too. Every earlier deployment ran older source and is listed below as superseded: **do not use them to evaluate the contract**.
 
 | Deployment | Network | SHA-256 of the code on-chain | Same as this repo's source? | `is_compliant()` fails closed on zero evidence? |
 |---|---|---|---|---|
@@ -19,7 +19,9 @@
 | [`0x873a571f866575DD92dA7A3E89CB0ae2FC65830C`](https://explorer-studio-dev.genlayer.com/address/0x873a571f866575DD92dA7A3E89CB0ae2FC65830C) RetainerConsumer (ZEROSAMPLE1) | Studio Next | `5e7347295bac0e55bc9367d3757a8d0ce60ab27fbdff1c040578148d335e90af` | **Yes, byte-identical** | n/a (consumer) |
 | `0xF48a62c51214ee7330D60569711FCa47C2C71f3E` | Studio Next | `969ede32d2c05d306188a0098327e1a2d3946438d4bcda64f5e05b382a938f36` | No: second deployment, before the zero-evidence fix | **No** |
 | `0xe118229AB26d0Be859aAd7e703f30dCc09f2090D` | Studio Next | `ee7d6696622f4ed06d33b075066342d1ce4f535dba5ddd53691ad46bd2007043` | No: first deployment, before both fixes | **No** |
-| `0x753632506c5CBbdf727F84C7DA6B48e16cf3D79F` | Bradbury | `b2ba9b46dd379214f964410917ac08835b4bbf58fd40acced2fd0fb16f1c7654` | No: pre-fix source | **No** |
+| [`0xECD44d71E3c7e7c366A4d971b4AbFc3C6E1d8428`](https://explorer-bradbury.genlayer.com/address/0xECD44d71E3c7e7c366A4d971b4AbFc3C6E1d8428) QuoteKeeper | Bradbury | `6ee88c4514f79057934a940e1475340c15dbaf4fe4ee75d32a622a844c0c692d` | **Yes, byte-identical to [`contracts/quotekeeper.py`](contracts/quotekeeper.py)** | **Yes** |
+| [`0xA158a70447BaC4E3d7A9c58884454B237Ae31519`](https://explorer-bradbury.genlayer.com/address/0xA158a70447BaC4E3d7A9c58884454B237Ae31519) RetainerConsumer | Bradbury | `3dabf78a4350436a839dd1cebbc0d48bd9e3f34fb38c9f310669a38a6f0731ad` | **Yes, byte-identical to [`contracts/retainer_consumer.py`](contracts/retainer_consumer.py)** | n/a (consumer) |
+| `0x753632506c5CBbdf727F84C7DA6B48e16cf3D79F` | Bradbury | `b2ba9b46dd379214f964410917ac08835b4bbf58fd40acced2fd0fb16f1c7654` | No: the first Bradbury deployment, pre-fix source (superseded by the Bradbury deployment above) | **No** |
 | `0xAFB03FeE47542A6fbe0741Fd8F7d65bADa37FF79` | Studio Next | `0e21bb0ca822c3bf483766eea8f94d26c0bf9ed6a6c5518d6bba37b6773a8067` | No: the first RetainerConsumer attempt, using the pre-port cross-contract call (see "Porting to Studio Next") | n/a (consumer) |
 
 Reproduce it:
@@ -32,9 +34,11 @@ npx tsx verify_code.ts                       # QuoteKeeper at the reviewed addre
 #   ../contracts/quotekeeper_studio_next.py sha256 9af41940db597d6a259ce013ac024cdad56e904e8e187431485ced660a87c350 (15218 chars)
 # IDENTICAL
 npx tsx verify_code.ts 0x46bc8b6670146F902441248F74dc95c106285E3d ../contracts/retainer_consumer_studio_next.py
+CHAIN=bradbury npx tsx verify_code.ts 0xECD44d71E3c7e7c366A4d971b4AbFc3C6E1d8428 ../contracts/quotekeeper.py            # Bradbury: IDENTICAL
+CHAIN=bradbury npx tsx verify_code.ts 0xA158a70447BaC4E3d7A9c58884454B237Ae31519 ../contracts/retainer_consumer.py       # Bradbury: IDENTICAL
 ```
 
-`shasum -a 256 contracts/quotekeeper_studio_next.py` gives the same hash locally, and `npx tsx verify_code.ts <old address>` prints `DIFFERENT` for any Studio Next deployment above marked superseded. The old `is_compliant()` on all three superseded QuoteKeeper deployments is the single line `return self.compliance_bps(agreement_id) >= min_compliance_bps`, with no zero-evidence guard.
+`shasum -a 256 contracts/quotekeeper_studio_next.py` gives the same hash locally, and `npx tsx verify_code.ts <old address>` prints `DIFFERENT` for any deployment above marked superseded. The old `is_compliant()` on all three superseded QuoteKeeper deployments is the single line `return self.compliance_bps(agreement_id) >= min_compliance_bps`, with no zero-evidence guard.
 
 **The studio source is a mechanical port of the tested source.** `python3 scripts/port_to_studio_next.py` regenerates `contracts/*_studio_next.py` from `contracts/*.py` (five import/decorator/base-class/message substitutions) and exits non-zero if either committed port differs. Both are `IDENTICAL`.
 
@@ -166,7 +170,33 @@ flagged is closed through the real cross-contract path, not just in the unit-tes
 
 Same mechanical process as [SolvencyOracle](https://github.com/HarrisonJL/solvency-oracle)'s port (pinned runner hash, `import genlayer as gl`, `@gl.storage.allow` + `@dataclass`, `gl.contract.Contract`, `gl.message.datetime`), plus one contract-specific find: `gl.get_contract_at` -> `gl.contract.get_at`, described above. `gl.vm.run_nondet` and `gl.eq_principle.strict_eq` - the actual consensus primitives this contract depends on - were confirmed unchanged in behavior by every test and live call behaving exactly as designed on both networks.
 
-## Historical: Bradbury deployment (superseded: runs the pre-fix source)
+## Bradbury deployment (current: runs the fixed source)
+
+- **QuoteKeeper:** [`0xECD44d71E3c7e7c366A4d971b4AbFc3C6E1d8428`](https://explorer-bradbury.genlayer.com/address/0xECD44d71E3c7e7c366A4d971b4AbFc3C6E1d8428), deploy tx [`0x05fcfc40…`](https://explorer-bradbury.genlayer.com/tx/0x05fcfc409617517d44b3e22a4318054bb3ff08cd2230ec787b1fee9a39f94276) (finalized)
+- **RetainerConsumer:** [`0xA158a70447BaC4E3d7A9c58884454B237Ae31519`](https://explorer-bradbury.genlayer.com/address/0xA158a70447BaC4E3d7A9c58884454B237Ae31519), deploy tx [`0xe1e60c8d…`](https://explorer-bradbury.genlayer.com/tx/0xe1e60c8dc52dc5f10cb79318eb706adcc8d8d9e2baec00d5cb034c426efcd325)
+- **Source:** [`contracts/quotekeeper.py`](contracts/quotekeeper.py) and [`contracts/retainer_consumer.py`](contracts/retainer_consumer.py) (the tested GenVM v0.2.11 sources, deployed as they are). Both are byte-identical on-chain (table under "Verify the deployed source").
+- **Why this exists:** the first Bradbury deployment (below) ran the source from before the self-audit and steward fixes. This one runs the fixed source, and the live run below exercises the fix.
+- **Proof log:** [`studio-next/bradbury_proof.json`](studio-next/bradbury_proof.json), written by [`scripts/bradbury_proof.ts`](scripts/bradbury_proof.ts) (a resumable run: it records each tx as it goes).
+
+Every transaction below reached `FINISHED_WITH_RETURN` at consensus status `ACCEPTED` (the deploy has since finalized; Bradbury finalizes after an appeal window that can take far longer, as the README notes):
+
+| Step | Tx | Result |
+|---|---|---|
+| `register_agreement("DEMO1")` | [`0x66acd9c9…`](https://explorer-bradbury.genlayer.com/tx/0x66acd9c96f6c7797b6d03f9581d9e00e7eb120aec8df212fecc224ecf66b61f2) | ✓ |
+| `register_agreement("DEMO2")` | [`0xfe97cc66…`](https://explorer-bradbury.genlayer.com/tx/0xfe97cc66f80083182d24345a2190417a5dde5021aa378fc16d0696ed3bae3dee) | ✓ |
+| `sample("DEMO1")` | [`0x28919b3f…`](https://explorer-bradbury.genlayer.com/tx/0x28919b3f367b80e756156519870edd6a0df0deafe8062ab8fab82900f95515f0) | `{"spread_bps": 50, "depth_usd": 180000, "verdict": "PASS"}` |
+| `sample("DEMO2")`, first submission | [`0xbcbbbf7f…`](https://explorer-bradbury.genlayer.com/tx/0xbcbbbf7f39b2d90a6c791e8f6e945ba732be552418beffba3360f8264b792a79) | sat in Bradbury's `COMMITTING` phase (round 4, 16 votes committed, none revealed) for over 16 minutes, so it was resubmitted; it did eventually execute (`FAIL`) |
+| `sample("DEMO2")`, resubmission | [`0x83dac54d…`](https://explorer-bradbury.genlayer.com/tx/0x83dac54d6abbccd6c12deb851ff056a094214a7e918c09908e4fd59e3c76d93f) | `{"spread_bps": 500, "depth_usd": 3500, "verdict": "FAIL"}` |
+| `RetainerConsumer` deploy (DEMO1, `min_compliance_bps` 9000) | [`0xe1e60c8d…`](https://explorer-bradbury.genlayer.com/tx/0xe1e60c8dc52dc5f10cb79318eb706adcc8d8d9e2baec00d5cb034c426efcd325) | ✓ |
+| `fund_retainer()` (1000) | [`0x9f0abe45…`](https://explorer-bradbury.genlayer.com/tx/0x9f0abe4595b9c650db34d1f7ae604f2bd8a03bdf95e2d712ff7380e60de39ae5) | ✓ |
+| `settle()` | [`0x05acb50d…`](https://explorer-bradbury.genlayer.com/tx/0x05acb50d9bc6e6752c52cbf8faf7490adbb54fe6e451987cda3ba61ccf981152) | `{"balance": 1000, "owed_to_mm": 1000, "owed_to_treasury": 0}`: a real cross-contract read of DEMO1's compliance |
+| `register_agreement("ZEROSAMPLE1")`, never sampled | [`0xfd79cb4b…`](https://explorer-bradbury.genlayer.com/tx/0xfd79cb4b9ec9fd9b1d6c64332c4e003f53f7ba85d72a59adacef122e978f5bc5) | ✓ |
+
+Because both of DEMO2's samples executed, the contract holds three samples (`sample_count` 3): one `PASS` for DEMO1 and two identical `FAIL`s for DEMO2.
+
+**The steward-flagged fix, live on Bradbury.** `compliance_bps("ZEROSAMPLE1")` reads `10000` (the deliberate display default for zero decisive samples), but `is_compliant("ZEROSAMPLE1", 0)` reads **`false`**, even at the lowest possible bar. `is_compliant("DEMO1", 9000)` reads `true`, and `is_compliant("DEMO2", 9000)` reads `false`.
+
+## Superseded: the first Bradbury deployment (runs the pre-fix source)
 
 **Do not use this deployment to evaluate the contract.** It was deployed before the self-audit and steward fixes: its `is_compliant()` has no zero-evidence guard, and its on-chain code (SHA-256 in the table under "Verify the deployed source") differs from this repo's source. It is kept only as a record of the original cross-network test.
 

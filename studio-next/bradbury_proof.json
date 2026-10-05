@@ -1,0 +1,151 @@
+{
+ "steps": {
+  "deploy_quotekeeper": {
+   "tx": "0x05fcfc409617517d44b3e22a4318054bb3ff08cd2230ec787b1fee9a39f94276",
+   "submitted_at": "2026-10-05T21:05:39.183Z",
+   "status_when_recorded": "ACCEPTED",
+   "result": "FINISHED_WITH_RETURN",
+   "to": "0xECD44d71E3c7e7c366A4d971b4AbFc3C6E1d8428",
+   "finalized_at": "2026-10-05T21:14:58.978Z",
+   "status_now": "FINALIZED",
+   "result_now": "FINISHED_WITH_RETURN"
+  },
+  "register_DEMO1": {
+   "tx": "0x66acd9c96f6c7797b6d03f9581d9e00e7eb120aec8df212fecc224ecf66b61f2",
+   "submitted_at": "2026-10-05T21:15:00.448Z",
+   "status_when_recorded": "ACCEPTED",
+   "result": "FINISHED_WITH_RETURN",
+   "to": "0xECD44d71E3c7e7c366A4d971b4AbFc3C6E1d8428",
+   "finalized_at": "2026-10-05T21:15:21.249Z",
+   "status_now": "ACCEPTED",
+   "result_now": "FINISHED_WITH_RETURN"
+  },
+  "register_DEMO2": {
+   "tx": "0xfe97cc66f80083182d24345a2190417a5dde5021aa378fc16d0696ed3bae3dee",
+   "submitted_at": "2026-10-05T21:15:22.756Z",
+   "status_when_recorded": "ACCEPTED",
+   "result": "FINISHED_WITH_RETURN",
+   "to": "0xECD44d71E3c7e7c366A4d971b4AbFc3C6E1d8428",
+   "finalized_at": "2026-10-05T21:15:43.595Z",
+   "status_now": "ACCEPTED",
+   "result_now": "FINISHED_WITH_RETURN"
+  },
+  "sample_DEMO1": {
+   "tx": "0x28919b3f367b80e756156519870edd6a0df0deafe8062ab8fab82900f95515f0",
+   "submitted_at": "2026-10-05T21:15:45.035Z",
+   "status_when_recorded": "ACCEPTED",
+   "result": "FINISHED_WITH_RETURN",
+   "to": "0xECD44d71E3c7e7c366A4d971b4AbFc3C6E1d8428",
+   "finalized_at": "2026-10-05T21:22:38.290Z",
+   "status_now": "ACCEPTED",
+   "result_now": "FINISHED_WITH_RETURN"
+  },
+  "sample_DEMO2_attempt1_stuck": {
+   "tx": "0xbcbbbf7f39b2d90a6c791e8f6e945ba732be552418beffba3360f8264b792a79",
+   "submitted_at": "2026-10-05T21:22:39.830Z",
+   "note": "abandoned: stuck in COMMITTING at round 4 (16 votes committed, none revealed, no rotations left) after 16+ minutes; resubmitted below",
+   "status_now": "ACCEPTED",
+   "result_now": "FINISHED_WITH_RETURN",
+   "to": "0xECD44d71E3c7e7c366A4d971b4AbFc3C6E1d8428"
+  },
+  "sample_DEMO2": {
+   "tx": "0x83dac54d6abbccd6c12deb851ff056a094214a7e918c09908e4fd59e3c76d93f",
+   "submitted_at": "2026-10-05T21:31:39.271Z",
+   "status_when_recorded": "ACCEPTED",
+   "result": "FINISHED_WITH_RETURN",
+   "to": "0xECD44d71E3c7e7c366A4d971b4AbFc3C6E1d8428",
+   "finalized_at": "2026-10-05T21:37:19.056Z",
+   "status_now": "ACCEPTED",
+   "result_now": "FINISHED_WITH_RETURN"
+  },
+  "deploy_retainer_consumer": {
+   "tx": "0xe1e60c8dc52dc5f10cb79318eb706adcc8d8d9e2baec00d5cb034c426efcd325",
+   "submitted_at": "2026-10-05T21:37:20.611Z",
+   "status_when_recorded": "ACCEPTED",
+   "result": "FINISHED_WITH_RETURN",
+   "to": "0xA158a70447BaC4E3d7A9c58884454B237Ae31519",
+   "finalized_at": "2026-10-05T21:37:31.134Z",
+   "status_now": "ACCEPTED",
+   "result_now": "FINISHED_WITH_RETURN"
+  },
+  "fund_retainer": {
+   "tx": "0x9f0abe4595b9c650db34d1f7ae604f2bd8a03bdf95e2d712ff7380e60de39ae5",
+   "submitted_at": "2026-10-05T21:37:32.511Z",
+   "status_when_recorded": "ACCEPTED",
+   "result": "FINISHED_WITH_RETURN",
+   "to": "0xA158a70447BaC4E3d7A9c58884454B237Ae31519",
+   "finalized_at": "2026-10-05T21:37:43.020Z",
+   "status_now": "ACCEPTED",
+   "result_now": "FINISHED_WITH_RETURN"
+  },
+  "settle": {
+   "tx": "0x05acb50d9bc6e6752c52cbf8faf7490adbb54fe6e451987cda3ba61ccf981152",
+   "submitted_at": "2026-10-05T21:37:44.604Z",
+   "status_when_recorded": "ACCEPTED",
+   "result": "FINISHED_WITH_RETURN",
+   "to": "0xA158a70447BaC4E3d7A9c58884454B237Ae31519",
+   "finalized_at": "2026-10-05T21:37:55.105Z",
+   "status_now": "ACCEPTED",
+   "result_now": "FINISHED_WITH_RETURN"
+  },
+  "register_ZEROSAMPLE1": {
+   "tx": "0xfd79cb4b9ec9fd9b1d6c64332c4e003f53f7ba85d72a59adacef122e978f5bc5",
+   "submitted_at": "2026-10-05T21:39:25.450Z",
+   "status_when_recorded": "ACCEPTED",
+   "result": "FINISHED_WITH_RETURN",
+   "to": "0xECD44d71E3c7e7c366A4d971b4AbFc3C6E1d8428",
+   "finalized_at": "2026-10-05T21:39:46.262Z",
+   "status_now": "ACCEPTED",
+   "result_now": "FINISHED_WITH_RETURN"
+  }
+ },
+ "quotekeeper": "0xECD44d71E3c7e7c366A4d971b4AbFc3C6E1d8428",
+ "retainer_consumer": "0xA158a70447BaC4E3d7A9c58884454B237Ae31519",
+ "final": {
+  "quotekeeper_state": {
+   "agreement_count": 3,
+   "sample_count": 3
+  },
+  "samples": [
+   {
+    "agreement_id": "DEMO1",
+    "depth_usd": 180000,
+    "sampled_at": "2026-10-05T21:15:44+00:00",
+    "source_hashes_json": "[\"7c335b2bd13a98339cf6ec35cff3cff8bc2b9637c3abe820a1a1837b53d54599\"]",
+    "spread_bps": 50,
+    "submitted_by": "0x5cdb5699bc1038e115A973bb91A646f7E98C075b",
+    "verdict": "PASS"
+   },
+   {
+    "agreement_id": "DEMO2",
+    "depth_usd": 3500,
+    "sampled_at": "2026-10-05T21:22:38+00:00",
+    "source_hashes_json": "[\"375d6f4f1a05acb8f7ae2073cfb158e84b605c46fdf5fae61f2dac399d5c54a6\"]",
+    "spread_bps": 500,
+    "submitted_by": "0x5cdb5699bc1038e115A973bb91A646f7E98C075b",
+    "verdict": "FAIL"
+   },
+   {
+    "agreement_id": "DEMO2",
+    "depth_usd": 3500,
+    "sampled_at": "2026-10-05T21:31:38+00:00",
+    "source_hashes_json": "[\"375d6f4f1a05acb8f7ae2073cfb158e84b605c46fdf5fae61f2dac399d5c54a6\"]",
+    "spread_bps": 500,
+    "submitted_by": "0x5cdb5699bc1038e115A973bb91A646f7E98C075b",
+    "verdict": "FAIL"
+   }
+  ],
+  "retainer_state": {
+   "agreement_id": "DEMO1",
+   "balance": 1000,
+   "min_compliance_bps": 9000,
+   "owed_to_mm": 1000,
+   "owed_to_treasury": 0,
+   "quotekeeper_address": "0xECD44d71E3c7e7c366A4d971b4AbFc3C6E1d8428"
+  },
+  "is_compliant_DEMO1": true,
+  "is_compliant_DEMO2_at_9000": false,
+  "is_compliant_ZEROSAMPLE1_at_0": false,
+  "compliance_bps_ZEROSAMPLE1": 10000
+ }
+}
